@@ -1,7 +1,6 @@
 import OpenAI from 'openai';
 import { NextResponse } from 'next/server';
 
-// Vercel 환경변수에서 키를 안전하게 불러옵니다.
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -10,9 +9,8 @@ export async function POST(req: Request) {
   try {
     const { text } = await req.json();
 
-    // 키가 설정되지 않았을 경우를 대비한 안전장치
     if (!process.env.OPENAI_API_KEY) {
-      return NextResponse.json({ error: "API 키가 설정되지 않았습니다." }, { status: 500 });
+      return NextResponse.json({ error: "API Key is missing." }, { status: 500 });
     }
 
     const systemPrompt = `
@@ -34,12 +32,17 @@ export async function POST(req: Request) {
         { role: "system", content: systemPrompt },
         { role: "user", content: text }
       ],
-      response_format: { type: "json_object" }, // JSON 응답 강제 (가장 안정적임)
+      response_format: { type: "json_object" },
     });
 
-    return NextResponse.json(JSON.parse(response.choices[0].message.content!));
-  } catch (error: any) {
-    console.error("Analysis Error:", error);
-    return NextResponse.json({ error: "분석 중 서버 오류가 발생했습니다." }, { status: 500 });
+    const content = response.choices[0].message.content;
+    if (!content) {
+      throw new Error("No response from OpenAI");
+    }
+
+    return NextResponse.json(JSON.parse(content));
+  } catch (error) {
+    console.error("API Route Error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

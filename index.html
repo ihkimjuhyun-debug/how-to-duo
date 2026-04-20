@@ -14,11 +14,11 @@
         <p>프로들을 위한 DET 훈련소</p>
       </div>
       <div class="menu-grid">
-        <button onclick="startMode('photo')" class="primary-btn">📸 사진 묘사하기</button>
-        <button onclick="startMode('dictation')" class="primary-btn">🎧 듣고 받아쓰기</button>
-        <button onclick="startMode('blank')" class="primary-btn">🧩 빈칸 채우기</button>
+        <button id="btn-mode-photo" class="primary-btn">📸 사진 묘사하기</button>
+        <button id="btn-mode-dictation" class="primary-btn">🎧 듣고 받아쓰기</button>
+        <button id="btn-mode-blank" class="primary-btn">🧩 빈칸 채우기 (C-Test)</button>
       </div>
-      <button onclick="renderHistory()" class="secondary-btn" style="margin-top:20px;">나의 학습 기록 및 단어장</button>
+      <button id="btn-history" class="secondary-btn" style="margin-top:20px;">나의 학습 기록 및 단어장</button>
     </section>
 
     <section id="quiz-view" class="view hidden">
@@ -32,10 +32,8 @@
         <div id="task-container" class="task-container">
           <img id="target-image" class="hidden" src="" alt="Random Photo">
           <div id="image-loader" class="loader hidden">이미지 로딩중...</div>
-          
-          <button id="play-audio-btn" class="audio-btn hidden">🔊 음성 듣기</button>
-          
-          <div id="blank-text-display" class="blank-text hidden"></div>
+          <button id="play-audio-btn" class="audio-btn hidden">🔊 음성 다시 듣기</button>
+          <div id="blank-text-display" class="blank-text hidden" style="text-align: left; font-size: 18px; line-height: 1.8;"></div>
         </div>
 
         <textarea id="user-input" placeholder="여기에 입력하세요..."></textarea>
@@ -47,7 +45,7 @@
 
     <section id="review-view" class="view hidden">
       <header class="review-header">
-        <button onclick="goHome()" class="back-btn">← 메인으로</button>
+        <button id="btn-home" class="back-btn">← 메인으로</button>
         <h2 id="review-title">분석 결과</h2>
       </header>
       <main class="review-main" id="review-content"></main>

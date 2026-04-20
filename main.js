@@ -1,29 +1,24 @@
 // main.js
 
-// 1. 학습 데이터 세트 (보편적인 일상/학술/업무 시나리오 기반)
+// 1. 학습 데이터 세트
 const DATA_POOL = {
   dictation: [
     "The library is located on the north side of the campus.",
     "Many people prefer to read digital books rather than paper ones.",
-    "The new restaurant downtown offers a variety of vegetarian dishes.",
-    "Regular exercise is essential for maintaining good physical health.",
-    "Students are required to submit their assignments by Friday afternoon.",
-    "Please make sure to turn off all the lights before leaving the office.",
-    "Learning a second language can greatly improve your cognitive skills.",
-    "The museum exhibits a wide collection of contemporary art.",
-    "Public transportation is a convenient way to commute in the city.",
-    "She has been working as a graphic designer for over five years."
+    "The new restaurant downtown offers a variety of vegetarian dishes."
   ],
   blank_paragraphs: [
-    "The modern workplace has changed significantly over the past decade. Many companies now offer flexible schedules and remote work options. This shift allows employees to better balance their personal and professional lives. However, remote work also presents unique challenges, such as maintaining team communication. To overcome this, managers must utilize digital collaboration tools effectively. Ultimately, a hybrid approach might be the most sustainable solution for the future of business.",
-    "Learning a new language can be a challenging but highly rewarding experience. It opens up opportunities to connect with people from completely different cultures. Consistent practice is the most important factor in achieving fluency. Listening to native speakers and watching movies can greatly improve pronunciation. Furthermore, making mistakes is a natural part of the learning process. Students should not feel embarrassed when they mispronounce a new word.",
-    "Public parks play a vital role in improving the quality of life in urban areas. They provide residents with a safe space for recreation and relaxation away from the busy streets. Furthermore, green spaces help reduce air pollution and regulate the city temperature. Many communities organize weekly events, such as farmers' markets and outdoor concerts, in these locations. Investing in park maintenance is essential for promoting public health and fostering a strong sense of community."
+    "The modern workplace has changed significantly over the past decade. Many companies now offer flexible schedules and remote work options. This shift allows employees to better balance their personal and professional lives. However, remote work also presents unique challenges, such as maintaining team communication. To overcome this, managers must utilize digital collaboration tools effectively.",
+    "Learning a new language can be a challenging but highly rewarding experience. It opens up opportunities to connect with people from completely different cultures. Consistent practice is the most important factor in achieving fluency. Listening to native speakers and watching movies can greatly improve pronunciation."
   ]
 };
 
 // 2. 상태 관리
-const state = { mode: '', timer: 0, timerId: null, targetContext: '' };
-const TIME_LIMITS = { photo: 300, dictation: 60, blank: 180 }; // 빈칸은 3분으로 설정
+const state = { 
+  mode: '', timer: 0, timerId: null, targetContext: '', 
+  cTestWords: [], cTestIndices: [], previousView: 'setup' 
+};
+const TIME_LIMITS = { photo: 300, dictation: 60, blank: 180 };
 
 // 3. DOM 요소 캐싱
 const els = {
@@ -34,63 +29,87 @@ const els = {
   audioBtn: document.getElementById('play-audio-btn'),
   blankDisplay: document.getElementById('blank-text-display'),
   textarea: document.getElementById('user-input'),
-  submitBtn: document.getElementById('submit-btn')
+  submitBtn: document.getElementById('submit-btn'),
+  historyList: document.getElementById('history-list-container')
 };
 
-// 4. C-Test (빈칸 채우기) 알고리즘 구현
-function generateCTestText(paragraph) {
-  let words = paragraph.split(' ');
-  let candidateIndices = [];
-  
-  // 5글자 이상인 영단어의 인덱스를 수집
-  words.forEach((w, i) => {
-    let cleanWord = w.replace(/[^a-zA-Z]/g, '');
-    if (cleanWord.length >= 5) candidateIndices.push(i);
-  });
-  
-  // 배열을 섞어서 무작위로 12개(10~13개 사이) 선택
-  candidateIndices.sort(() => 0.5 - Math.random());
-  let selectedIndices = new Set(candidateIndices.slice(0, 12));
-
-  let maskedWords = words.map((w, i) => {
-    if (selectedIndices.has(i)) {
-      let cleanWord = w.replace(/[^a-zA-Z]/g, ''); // 알파벳만 추출
-      // 단어의 절반(올림)은 보여주고, 나머지는 밑줄 처리
-      let keepLen = Math.ceil(cleanWord.length / 2);
-      let kept = cleanWord.substring(0, keepLen);
-      let masked = kept + "___"; // underst___ 형태
-      // 기존 특수문자(마침표, 쉼표 등) 복구
-      return `<strong style="color:var(--blue);">${w.replace(cleanWord, masked)}</strong>`;
-    }
-    return w;
-  });
-  
-  return maskedWords.join(' ');
-}
-
-// 5. 화면 전환 및 게임 시작 로직
+// 화면 전환 함수
 function showView(id) {
   els.views.forEach(v => v.classList.add('hidden'));
   document.getElementById(`${id}-view`).classList.remove('hidden');
 }
 
+// ==========================================
+// 🚀 핵심 1: 인터랙티브 C-Test 생성 알고리즘
+// ==========================================
+function generateInteractiveCTest(paragraph) {
+  state.cTestWords = paragraph.split(' ');
+  let candidateIndices = [];
+  
+  state.cTestWords.forEach((w, i) => {
+    if (w.replace(/[^a-zA-Z]/g, '').length >= 5) candidateIndices.push(i);
+  });
+  
+  candidateIndices.sort(() => 0.5 - Math.random());
+  state.cTestIndices = candidateIndices.slice(0, 12); // 최대 12개 빈칸
+  const selectedSet = new Set(state.cTestIndices);
+
+  let htmlArray = state.cTestWords.map((w, i) => {
+    if (selectedSet.has(i)) {
+      let cleanWord = w.replace(/[^a-zA-Z]/g, '');
+      let keepLen = Math.ceil(cleanWord.length / 2);
+      let kept = cleanWord.substring(0, keepLen);
+      let missingLen = cleanWord.length - keepLen;
+      
+      let punctStart = w.substring(0, w.indexOf(cleanWord));
+      let punctEnd = w.substring(w.indexOf(cleanWord) + cleanWord.length);
+
+      // input 태그를 텍스트 중간에 삽입
+      return `${punctStart}<span class="c-test-kept">${kept}</span><input type="text" class="c-test-input" id="blank-input-${i}" maxlength="${missingLen + 1}" style="width: ${missingLen * 1.2}em;" autocomplete="off">${punctEnd}`;
+    }
+    return w;
+  });
+  
+  return htmlArray.join(' ');
+}
+
+// ==========================================
+// 🚀 핵심 2: 유저가 입력한 빈칸 텍스트 재조립
+// ==========================================
+function getReconstructedCTestText() {
+  let userWords = [...state.cTestWords];
+  
+  state.cTestIndices.forEach((index) => {
+    let inputEl = document.getElementById(`blank-input-${index}`);
+    if(inputEl) {
+      let originalWord = state.cTestWords[index];
+      let cleanOriginal = originalWord.replace(/[^a-zA-Z]/g, '');
+      let keepLen = Math.ceil(cleanOriginal.length / 2);
+      let kept = cleanOriginal.substring(0, keepLen);
+      
+      let userTyped = inputEl.value.trim();
+      let reconstructedWord = kept + userTyped;
+      
+      userWords[index] = originalWord.replace(cleanOriginal, reconstructedWord);
+    }
+  });
+  return userWords.join(' ');
+}
+
+// 4. 모드 시작 로직
 function startMode(mode) {
   state.mode = mode;
   state.timer = TIME_LIMITS[mode];
   els.textarea.value = '';
   els.submitBtn.disabled = true; els.submitBtn.classList.add('inactive'); els.submitBtn.innerText = "제출하기";
-  document.getElementById('progress-filler').style.width = '0%';
   
-  // UI 요소 모두 숨기기
-  els.targetImg.classList.add('hidden');
-  els.imgLoader.classList.add('hidden');
-  els.audioBtn.classList.add('hidden');
-  els.blankDisplay.classList.add('hidden');
+  els.targetImg.classList.add('hidden'); els.imgLoader.classList.add('hidden');
+  els.audioBtn.classList.add('hidden'); els.blankDisplay.classList.add('hidden');
+  els.textarea.classList.remove('hidden'); // 기본은 textarea 보이기
 
   if (mode === 'photo') {
-    els.instruction.innerText = "📸 사진을 보고 영어로 묘사하세요 (최소 2문장 이상)";
-    els.targetImg.classList.remove('hidden');
-    els.imgLoader.classList.remove('hidden');
+    els.instruction.innerText = "📸 사진을 보고 영어로 묘사하세요 (최소 2문장)";
+    els.targetImg.classList.remove('hidden'); els.imgLoader.classList.remove('hidden');
     els.targetImg.src = `https://picsum.photos/800/600?random=${Math.random()}`;
     els.targetImg.onload = () => els.imgLoader.classList.add('hidden');
     state.targetContext = "Random Image";
@@ -98,54 +117,36 @@ function startMode(mode) {
   else if (mode === 'dictation') {
     els.instruction.innerText = "🎧 음성을 듣고 정확히 받아 적으세요.";
     els.audioBtn.classList.remove('hidden');
-    
-    // 매번 다른 문장 랜덤 선택
-    const randomSentence = DATA_POOL.dictation[Math.floor(Math.random() * DATA_POOL.dictation.length)];
-    state.targetContext = randomSentence;
-    
-    // 시작과 동시에 한 번 읽어줌
+    state.targetContext = DATA_POOL.dictation[Math.floor(Math.random() * DATA_POOL.dictation.length)];
     playAudio(state.targetContext);
   } 
   else if (mode === 'blank') {
-    els.instruction.innerText = "🧩 빈칸(밑줄)에 들어갈 알맞은 단어를 유추하여 전체 문단을 완성하세요.";
-    els.blankDisplay.classList.remove('hidden');
+    els.instruction.innerText = "🧩 빈칸을 클릭하여 생략된 스펠링을 채워 넣으세요.";
+    els.textarea.classList.add('hidden'); // textarea 숨김!
+    els.blankDisplay.classList.remove('hidden'); // 빈칸 UI 표시
     
-    // 매번 다른 문단 랜덤 선택
-    const randomParagraph = DATA_POOL.blank_paragraphs[Math.floor(Math.random() * DATA_POOL.blank_paragraphs.length)];
-    state.targetContext = randomParagraph;
-    
-    // 알고리즘을 통해 12개 빈칸 뚫기
-    els.blankDisplay.innerHTML = generateCTestText(randomParagraph);
+    state.targetContext = DATA_POOL.blank_paragraphs[Math.floor(Math.random() * DATA_POOL.blank_paragraphs.length)];
+    els.blankDisplay.innerHTML = generateInteractiveCTest(state.targetContext);
+
+    // 모든 input에 이벤트 리스너 달아서 제출 버튼 활성화 체크
+    document.querySelectorAll('.c-test-input').forEach(input => {
+      input.addEventListener('input', checkBlankInputs);
+    });
   }
 
   showView('quiz');
   startTimer();
 }
 
-// 오디오 재생 함수
-function playAudio(text) {
-  window.speechSynthesis.cancel();
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-US';
-  utterance.rate = 0.9;
-  window.speechSynthesis.speak(utterance);
+// 빈칸 입력 검사 (하나라도 적으면 활성화)
+function checkBlankInputs() {
+  let hasInput = Array.from(document.querySelectorAll('.c-test-input')).some(inp => inp.value.trim().length > 0);
+  els.submitBtn.disabled = !hasInput;
+  if(hasInput) els.submitBtn.classList.remove('inactive');
+  else els.submitBtn.classList.add('inactive');
 }
 
-// 타이머
-function startTimer() {
-  const maxTime = TIME_LIMITS[state.mode];
-  state.timerId = setInterval(() => {
-    state.timer--;
-    const m = String(Math.floor(state.timer / 60)).padStart(2, '0');
-    const s = String(state.timer % 60).padStart(2, '0');
-    document.getElementById('timer').innerText = `${m}:${s}`;
-    document.getElementById('progress-filler').style.width = `${((maxTime - state.timer) / maxTime) * 100}%`;
-
-    if (state.timer <= 0) submitExam();
-  }, 1000);
-}
-
-// 텍스트 입력 검증
+// Textarea 입력 검사
 els.textarea.addEventListener('input', (e) => {
   const isValid = state.mode === 'photo' ? e.target.value.trim().length > 20 : e.target.value.trim().length > 5; 
   els.submitBtn.disabled = !isValid;
@@ -153,50 +154,107 @@ els.textarea.addEventListener('input', (e) => {
   else els.submitBtn.classList.add('inactive');
 });
 
+// 5. 오디오 / 타이머
+function playAudio(text) {
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = 'en-US'; utterance.rate = 0.9;
+  window.speechSynthesis.speak(utterance);
+}
+
+function startTimer() {
+  const maxTime = TIME_LIMITS[state.mode];
+  state.timerId = setInterval(() => {
+    state.timer--;
+    document.getElementById('timer').innerText = `${String(Math.floor(state.timer / 60)).padStart(2, '0')}:${String(state.timer % 60).padStart(2, '0')}`;
+    document.getElementById('progress-filler').style.width = `${((maxTime - state.timer) / maxTime) * 100}%`;
+    if (state.timer <= 0) submitExam();
+  }, 1000);
+}
+
 // 6. 서버 제출 및 기록 저장
 async function submitExam() {
   clearInterval(state.timerId);
-  els.submitBtn.disabled = true;
-  els.submitBtn.innerText = "AI 분석 중... 🏃‍♂️";
+  els.submitBtn.disabled = true; els.submitBtn.innerText = "AI 분석 중... 🏃‍♂️";
+
+  // 모드에 따라 전송할 텍스트 결정
+  const finalUserText = state.mode === 'blank' ? getReconstructedCTestText() : els.textarea.value;
 
   try {
     const res = await fetch('/api/evaluate', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        mode: state.mode, 
-        text: els.textarea.value,
-        targetContext: state.targetContext
-      })
+      body: JSON.stringify({ mode: state.mode, text: finalUserText, targetContext: state.targetContext })
     });
     
     if (!res.ok) throw new Error('서버 에러 발생');
     const result = await res.json();
     
-    saveToStorage(result);
-    renderReview(result);
+    // 타임스탬프 추가해서 저장
+    const finalResult = { id: Date.now(), date: new Date().toLocaleString(), mode: state.mode, ...result };
+    saveToStorage(finalResult);
+    
+    state.previousView = 'setup'; // 시험 직후엔 메인으로 돌아가도록 세팅
+    renderReview(finalResult);
   } catch (err) {
     alert(err.message);
-    els.submitBtn.disabled = false;
-    els.submitBtn.innerText = "제출하기";
+    els.submitBtn.disabled = false; els.submitBtn.innerText = "제출하기";
     startTimer();
   }
 }
 
 function saveToStorage(result) {
   const history = JSON.parse(localStorage.getItem('det_history') || '[]');
-  history.push({ date: new Date().toLocaleString(), mode: state.mode, ...result });
+  history.push(result);
   localStorage.setItem('det_history', JSON.stringify(history));
-
-  if(result.vocabulary) {
-    const vocab = JSON.parse(localStorage.getItem('det_vocab') || '[]');
-    localStorage.setItem('det_vocab', JSON.stringify([...vocab, ...result.vocabulary]));
-  }
 }
 
-// 7. 화면 렌더링 (리뷰 및 히스토리)
+// ==========================================
+// 🚀 핵심 3: 고장 난 히스토리 완벽 복원 (Deep Dive)
+// ==========================================
+function renderHistoryList() {
+  const history = JSON.parse(localStorage.getItem('det_history') || '[]');
+  if(history.length === 0) {
+    els.historyList.innerHTML = '<div class="analysis-box" style="text-align:center;">저장된 기록이 없습니다.</div>';
+  } else {
+    // 클릭 시 상세 분석 화면(renderReview)으로 넘어가는 리스트 생성
+    els.historyList.innerHTML = history.reverse().map(h => `
+      <div class="analysis-box clickable" onclick="openHistoryDetail(${h.id})">
+        <h3 style="display:flex; justify-content:space-between; margin-bottom: 5px;">
+          <span style="font-size:14px; color:#888;">${h.date}</span>
+          <span style="color:var(--green);">${h.score}점</span>
+        </h3>
+        <p style="margin-top:0; font-size: 14px;"><strong>[${h.mode.toUpperCase()}]</strong> ${h.feedback.substring(0, 30)}...</p>
+        <div style="text-align:right; font-size:12px; color:var(--blue);">상세 보기 ➔</div>
+      </div>
+    `).join('');
+  }
+  showView('history');
+}
+
+// 전역 함수로 등록하여 HTML onclick에서 접근 가능하게 함
+window.openHistoryDetail = (id) => {
+  const history = JSON.parse(localStorage.getItem('det_history') || '[]');
+  const data = history.find(h => h.id === id);
+  if(data) {
+    state.previousView = 'history'; // 뒤로 가기 눌렀을 때 히스토리 목록으로 가도록 세팅
+    renderReview(data);
+  }
+};
+
 function renderReview(data) {
   const content = document.getElementById('review-content');
+  
+  // 뒤로가기 버튼 로직 (어디서 왔느냐에 따라 다름)
+  const backBtn = document.getElementById('btn-back-from-review');
+  if(state.previousView === 'history') {
+    backBtn.innerText = "← 목록으로";
+    backBtn.onclick = renderHistoryList;
+  } else {
+    backBtn.innerText = "← 메인으로";
+    backBtn.onclick = () => showView('setup');
+  }
+
   content.innerHTML = `
     <div class="score-card">
       <p>EST. DET SCORE</p>
@@ -206,56 +264,27 @@ function renderReview(data) {
     
     ${data.vocabulary && data.vocabulary.length > 0 ? `
     <div class="analysis-box">
-      <h3>단어 & 표현</h3>
+      <h3>📖 단어 & 표현 복기</h3>
       <ul>${data.vocabulary.map(v => `<li><strong>${v.word}</strong> - ${v.meaning} <br><span style="color:#888;">예문: "${v.example}"</span></li>`).join('')}</ul>
     </div>` : ''}
 
     ${data.grammar_focus && data.grammar_focus.length > 0 ? `
     <div class="analysis-box">
-      <h3>Grammar Focus</h3>
+      <h3>🛠 Grammar Focus</h3>
       <ul>${data.grammar_focus.map(g => `<li><span class="error">${g.original}</span> → <span class="correct">${g.corrected}</span><br><span style="font-size:14px; color:#666;">💡 ${g.reason}</span></li>`).join('')}</ul>
     </div>` : ''}
-
-    ${data.better_expressions && data.better_expressions.length > 0 ? `
-    <div class="analysis-box">
-      <h3>더 나은 표현 제안</h3>
-      <ul>${data.better_expressions.map(b => `<li>❌ "${b.original}"<br>✅ <strong style="color:var(--blue);">"${b.improved}"</strong></li>`).join('')}</ul>
-    </div>` : ''}
   `;
-  document.getElementById('review-title').innerText = "분석 결과";
   showView('review');
 }
 
-function renderHistory() {
-  const history = JSON.parse(localStorage.getItem('det_history') || '[]');
-  const content = document.getElementById('review-content');
-  if(history.length === 0) {
-    content.innerHTML = '<div class="analysis-box" style="text-align:center;">저장된 기록이 없습니다. 시험을 먼저 진행해주세요!</div>';
-  } else {
-    content.innerHTML = history.reverse().map(h => `
-      <div class="analysis-box">
-        <h3 style="display:flex; justify-content:space-between; margin-bottom: 5px;">
-          <span style="font-size:14px; color:#888;">${h.date}</span>
-          <span style="color:var(--green);">${h.score}점</span>
-        </h3>
-        <p style="margin-top:0;"><strong>[${h.mode.toUpperCase()}]</strong> ${h.feedback}</p>
-      </div>
-    `).join('');
-  }
-  document.getElementById('review-title').innerText = "나의 학습 기록";
-  showView('review');
-}
-
-// 8. 이벤트 리스너 바인딩 (버그 없는 완벽한 연결)
+// 7. 메인 이벤트 바인딩
 document.getElementById('btn-mode-photo').addEventListener('click', () => startMode('photo'));
 document.getElementById('btn-mode-dictation').addEventListener('click', () => startMode('dictation'));
 document.getElementById('btn-mode-blank').addEventListener('click', () => startMode('blank'));
-document.getElementById('btn-history').addEventListener('click', renderHistory);
+
+// 기록 보기 버튼들
+document.getElementById('btn-history').addEventListener('click', renderHistoryList);
+document.getElementById('btn-home-from-history').addEventListener('click', () => showView('setup'));
+
 document.getElementById('submit-btn').addEventListener('click', submitExam);
 els.audioBtn.addEventListener('click', () => playAudio(state.targetContext));
-
-document.getElementById('btn-home').addEventListener('click', () => {
-  if(state.timerId) clearInterval(state.timerId);
-  window.speechSynthesis.cancel();
-  showView('setup');
-});

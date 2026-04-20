@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SEMI-DUO | DET PREP</title>
+  <title>SEMI-DUO | DET PREP PRO</title>
   <link rel="stylesheet" href="/style.css">
 </head>
 <body>
@@ -11,23 +11,34 @@
     <section id="setup-view" class="view">
       <div class="logo-container">
         <h1 class="logo-text">SEMI<span class="highlight">DUO</span></h1>
+        <p>프로들을 위한 DET 훈련소</p>
       </div>
-      <button id="start-btn" class="primary-btn">새 시험 시작 (사진 묘사)</button>
-      <button id="history-btn" class="secondary-btn">나의 학습 기록 및 단어장</button>
+      <div class="menu-grid">
+        <button onclick="startMode('photo')" class="primary-btn">📸 사진 묘사하기</button>
+        <button onclick="startMode('dictation')" class="primary-btn">🎧 듣고 받아쓰기</button>
+        <button onclick="startMode('blank')" class="primary-btn">🧩 빈칸 채우기</button>
+      </div>
+      <button onclick="renderHistory()" class="secondary-btn" style="margin-top:20px;">나의 학습 기록 및 단어장</button>
     </section>
 
     <section id="quiz-view" class="view hidden">
       <header class="quiz-header">
         <div class="progress-bar"><div id="progress-filler"></div></div>
-        <div id="timer" class="timer">05:00</div>
+        <div id="timer" class="timer">00:00</div>
       </header>
       <main class="quiz-main">
-        <div class="instruction">Write about the photo (최소 2줄 이상)</div>
-        <div class="image-wrapper">
-          <img id="target-image" src="" alt="Random Photo">
-          <div id="image-loader" class="loader">로딩중...</div>
+        <div id="instruction" class="instruction">지시문</div>
+        
+        <div id="task-container" class="task-container">
+          <img id="target-image" class="hidden" src="" alt="Random Photo">
+          <div id="image-loader" class="loader hidden">이미지 로딩중...</div>
+          
+          <button id="play-audio-btn" class="audio-btn hidden">🔊 음성 듣기</button>
+          
+          <div id="blank-text-display" class="blank-text hidden"></div>
         </div>
-        <textarea id="user-input" placeholder="사진을 영어로 묘사해주세요..."></textarea>
+
+        <textarea id="user-input" placeholder="여기에 입력하세요..."></textarea>
       </main>
       <footer>
         <button id="submit-btn" class="primary-btn inactive" disabled>제출하기</button>
@@ -36,11 +47,10 @@
 
     <section id="review-view" class="view hidden">
       <header class="review-header">
-        <button id="home-btn" class="back-btn">← 메인으로</button>
+        <button onclick="goHome()" class="back-btn">← 메인으로</button>
         <h2 id="review-title">분석 결과</h2>
       </header>
-      <main class="review-main" id="review-content">
-        </main>
+      <main class="review-main" id="review-content"></main>
     </section>
   </div>
   <script type="module" src="/main.js"></script>

@@ -32,8 +32,9 @@
         <div id="task-container" class="task-container">
           <img id="target-image" class="hidden" src="" alt="Random Photo">
           <div id="image-loader" class="loader hidden">이미지 로딩중...</div>
-          <button id="play-audio-btn" class="audio-btn hidden">🔊 음성 다시 듣기</button>
-          <div id="blank-text-display" class="blank-text hidden" style="text-align: left; font-size: 18px; line-height: 1.8;"></div>
+          <button id="play-audio-btn" class="audio-btn hidden">🔊 음성 듣기</button>
+          
+          <div id="blank-text-display" class="blank-text hidden"></div>
         </div>
 
         <textarea id="user-input" placeholder="여기에 입력하세요..."></textarea>
@@ -43,9 +44,19 @@
       </footer>
     </section>
 
+    <section id="history-view" class="view hidden">
+      <header class="review-header">
+        <button id="btn-home-from-history" class="back-btn">← 메인으로</button>
+        <h2>학습 기록 & 단어장</h2>
+      </header>
+      <main class="review-main">
+        <div id="history-list-container"></div>
+      </main>
+    </section>
+
     <section id="review-view" class="view hidden">
       <header class="review-header">
-        <button id="btn-home" class="back-btn">← 메인으로</button>
+        <button id="btn-back-from-review" class="back-btn">← 뒤로</button>
         <h2 id="review-title">분석 결과</h2>
       </header>
       <main class="review-main" id="review-content"></main>

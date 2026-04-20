@@ -2,21 +2,36 @@
 
 import { useState, useEffect } from 'react';
 
+// ✅ 빌드 에러(Build Failed)를 막기 위한 TypeScript 타입 정의
+interface Vocabulary { word: string; meaning: string; usage: string; }
+interface Idiom { phrase: string; meaning: string; usage: string; }
+interface Writing { original: string; corrected: string; score: number; feedback: string; }
+interface Spoken { expression: string; situation: string; }
+
+interface StorageData {
+  vocabulary: Vocabulary[];
+  idioms: Idiom[];
+  writing: Writing[];
+  spoken: Spoken[];
+}
+
 export default function EnglishStudyApp() {
   const [inputText, setInputText] = useState('');
-  const [activeTab, setActiveTab] = useState('input'); // input | voca | writing | spoken
+  const [activeTab, setActiveTab] = useState('input');
   const [loading, setLoading] = useState(false);
-  const [storage, setStorage] = useState({
+  
+  // ✅ 초기 상태에도 엄격하게 타입을 부여합니다.
+  const [storage, setStorage] = useState<StorageData>({
     vocabulary: [], idioms: [], writing: [], spoken: []
   });
 
-  // 1. 앱 시작 시 로컬 저장소에서 데이터 불러오기
   useEffect(() => {
-    const savedData = localStorage.getItem('my_english_vault');
-    if (savedData) setStorage(JSON.parse(savedData));
+    const savedData = localStorage.getItem('my_english_vault_v2');
+    if (savedData) {
+      setStorage(JSON.parse(savedData));
+    }
   }, []);
 
-  // 2. 종합 분석 및 자동 배치 함수
   const handleProcessData = async () => {
     if (!inputText.trim()) return;
     setLoading(true);
@@ -31,20 +46,21 @@ export default function EnglishStudyApp() {
       const result = await response.json();
       if (result.error) throw new Error(result.error);
 
-      // 기존 데이터와 새 데이터를 합쳐서 영역별로 저장
-      const updatedStorage = {
-        vocabulary: [...result.vocabulary, ...storage.vocabulary],
-        idioms: [...result.idioms, ...storage.idioms],
-        writing: [...result.writing, ...storage.writing],
-        spoken: [...result.spoken, ...storage.spoken],
+      // ✅ 데이터를 안전하게 병합
+      const updatedStorage: StorageData = {
+        vocabulary: [...(result.vocabulary || []), ...storage.vocabulary],
+        idioms: [...(result.idioms || []), ...storage.idioms],
+        writing: [...(result.writing || []), ...storage.writing],
+        spoken: [...(result.spoken || []), ...storage.spoken],
       };
 
       setStorage(updatedStorage);
-      localStorage.setItem('my_english_vault', JSON.stringify(updatedStorage)); // 영구 저장
+      localStorage.setItem('my_english_vault_v2', JSON.stringify(updatedStorage));
       setInputText('');
-      setActiveTab('writing'); // 분석 후 라이팅 결과 탭으로 자동 이동
+      setActiveTab('writing');
     } catch (err) {
-      alert("분석 실패: API 키 확인 또는 서버 오류");
+      console.error(err);
+      alert("분석에 실패했습니다. 관리자 도구를 확인해주세요.");
     } finally {
       setLoading(false);
     }
@@ -53,13 +69,12 @@ export default function EnglishStudyApp() {
   return (
     <div className="min-h-screen bg-slate-50 p-4 font-sans">
       <div className="max-w-4xl mx-auto">
-        {/* 헤더 */}
+        
         <header className="py-10 text-center">
           <h1 className="text-4xl font-black text-slate-900 tracking-tight">STUDY HUB <span className="text-blue-600">PRO</span></h1>
-          <p className="text-slate-500 mt-2">복붙 한 번으로 완성되는 자동 분류 시스템</p>
+          <p className="text-slate-500 mt-2">빌드 에러 없는 완벽한 자동 분류 시스템</p>
         </header>
 
-        {/* 메인 탭 네비게이션 */}
         <div className="flex bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200 mb-8">
           {[
             { id: 'input', label: '텍스트 입력' },
@@ -79,10 +94,9 @@ export default function EnglishStudyApp() {
           ))}
         </div>
 
-        {/* 컨텐츠 영역 */}
         <div className="bg-white rounded-3xl p-8 shadow-xl border border-slate-100 min-h-[450px]">
           {activeTab === 'input' && (
-            <div className="space-y-4 animate-in fade-in">
+            <div className="space-y-4">
               <textarea
                 className="w-full h-72 p-6 bg-slate-50 border-none rounded-2xl focus:ring-2 focus:ring-blue-500 text-lg outline-none"
                 placeholder="학습한 내용을 여기에 자유롭게 붙여넣으세요..."
@@ -94,15 +108,15 @@ export default function EnglishStudyApp() {
                 disabled={loading}
                 className="w-full py-5 bg-slate-900 text-white rounded-2xl font-bold text-xl hover:bg-blue-700 transition-all disabled:bg-slate-300"
               >
-                {loading ? "AI가 조각내어 분류하는 중..." : "종합 분석 시작"}
+                {loading ? "AI 분석 및 분류 중..." : "종합 분석 시작"}
               </button>
             </div>
           )}
 
           {activeTab === 'voca' && (
-            <div className="grid md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-2">
+            <div className="grid md:grid-cols-2 gap-8">
               <section>
-                <h3 className="text-lg font-bold text-blue-600 mb-4 flex items-center">📝 단어장</h3>
+                <h3 className="text-lg font-bold text-blue-600 mb-4">📝 단어장</h3>
                 {storage.vocabulary.map((v, i) => (
                   <div key={i} className="mb-4 p-4 bg-blue-50 rounded-xl">
                     <p className="font-bold text-blue-900">{v.word} <span className="text-sm font-normal text-blue-400">| {v.meaning}</span></p>
@@ -116,6 +130,7 @@ export default function EnglishStudyApp() {
                   <div key={i} className="mb-4 p-4 bg-indigo-50 rounded-xl border border-indigo-100">
                     <p className="font-bold text-indigo-900">{id.phrase}</p>
                     <p className="text-sm text-indigo-700">{id.meaning}</p>
+                    <p className="text-xs text-indigo-500 mt-2 italic">{id.usage}</p>
                   </div>
                 ))}
               </section>
@@ -123,7 +138,7 @@ export default function EnglishStudyApp() {
           )}
 
           {activeTab === 'writing' && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-2">
+            <div className="space-y-6">
               <h3 className="text-lg font-bold text-emerald-600 mb-2">✍️ 라이팅 교정 및 평가</h3>
               {storage.writing.map((w, i) => (
                 <div key={i} className="p-6 rounded-2xl border-2 border-slate-50 bg-slate-50">
@@ -141,7 +156,7 @@ export default function EnglishStudyApp() {
           )}
 
           {activeTab === 'spoken' && (
-            <div className="space-y-4 animate-in slide-in-from-bottom-2">
+            <div className="space-y-4">
               <h3 className="text-lg font-bold text-orange-600 mb-2">🗣️ 실전 구어체 표현</h3>
               {storage.spoken.map((s, i) => (
                 <div key={i} className="p-5 bg-orange-50 rounded-2xl border border-orange-100">

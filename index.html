@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SEMI-DUO | DET PREP</title>
+  <link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <div id="app">
+    <section id="setup-view" class="view">
+      <div class="logo-container">
+        <h1 class="logo-text">SEMI<span class="highlight">DUO</span></h1>
+      </div>
+      <button id="start-btn" class="primary-btn">새 시험 시작 (사진 묘사)</button>
+      <button id="history-btn" class="secondary-btn">나의 학습 기록 및 단어장</button>
+    </section>
+
+    <section id="quiz-view" class="view hidden">
+      <header class="quiz-header">
+        <div class="progress-bar"><div id="progress-filler"></div></div>
+        <div id="timer" class="timer">05:00</div>
+      </header>
+      <main class="quiz-main">
+        <div class="instruction">Write about the photo (최소 2줄 이상)</div>
+        <div class="image-wrapper">
+          <img id="target-image" src="" alt="Random Photo">
+          <div id="image-loader" class="loader">로딩중...</div>
+        </div>
+        <textarea id="user-input" placeholder="사진을 영어로 묘사해주세요..."></textarea>
+      </main>
+      <footer>
+        <button id="submit-btn" class="primary-btn inactive" disabled>제출하기</button>
+      </footer>
+    </section>
+
+    <section id="review-view" class="view hidden">
+      <header class="review-header">
+        <button id="home-btn" class="back-btn">← 메인으로</button>
+        <h2 id="review-title">분석 결과</h2>
+      </header>
+      <main class="review-main" id="review-content">
+        </main>
+    </section>
+  </div>
+  <script type="module" src="/main.js"></script>
+</body>
+</html>
